@@ -7,10 +7,12 @@ const admin = require("firebase-admin");
 const port = process.env.PORT || 5000;
 const ObjectId = require('mongodb').ObjectId;
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
+const fileUpload = require('express-fileupload');
 
 //Middle Ware
 app.use(cors());
 app.use(express.json());
+app.use(fileUpload());
 
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -46,6 +48,7 @@ async function run() {
         const database = client.db('doctors_portal');
         const appointmentsCollection = database.collection('appointments');
         const usersCollection = database.collection('users');
+        const doctorsCollection = database.collection('doctors');
 
         // Insert a appointment
         app.post('/appointments', async (req, res) => {
@@ -149,6 +152,35 @@ async function run() {
             })
             res.json({ clientSecret: paymentIntent.client_secret })
         })
+
+
+        //Upload Image
+        app.post('/doctors', async (req, res) => {
+            const name = req.body.name;
+            const email = req.body.email;
+            const pic = req.files.image;
+            const picData = pic.data;
+            const encodedPic = picData.toString('base64');
+            const imageBuffer = Buffer.from(encodedPic, 'base64');
+            const doctor = {
+                name,
+                email,
+                image: imageBuffer
+            }
+            const result = await doctorsCollection.insertOne(doctor);
+            // console.log('body', req.body);
+            // console.log('files', req.files);
+            res.json(result)
+        })
+        // Get Doctors
+        app.get('/doctors', async (req, res) => {
+            const cursor = doctorsCollection.find({});
+            const doctors = await cursor.toArray();
+            res.json(doctors)
+        })
+
+
+
 
 
 
